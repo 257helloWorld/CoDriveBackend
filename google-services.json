@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "874102047441",
+    "project_id": "codrive-fec10",
+    "storage_bucket": "codrive-fec10.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:874102047441:android:1494b77a8ccab9b3f83bf0",
+        "android_client_info": {
+          "package_name": "io.ionic.starter"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "874102047441-fsp5qmcs3ce0om1u4gtirpadslc23n00.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "io.ionic.starter",
+            "certificate_hash": "912a466e5048499b5429e779232c71873e0c1709"
+          }
+        },
+        {
+          "client_id": "874102047441-6d1ak38om1qgup2f9hl8o3kmt6i73nms.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD9X-f3IAx-JRgeobDBRtMKRUdTqvZnC0A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "874102047441-6d1ak38om1qgup2f9hl8o3kmt6i73nms.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

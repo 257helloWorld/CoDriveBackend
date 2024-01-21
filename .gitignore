@@ -1,0 +1,4 @@
+venv/
+
+#Api Key
+config.py
