@@ -17,9 +17,9 @@ db = firestore.client()
 userRef = db.collection("Users")
 vehicleRef = db.collection("Vehicles")
 reviewRef = db.collection("Reviews")
+rideRef = db.collection("Rides")
 
 # scheduler = BackgroundScheduler()
-
 
 def printHello():
 	print("Hello")
@@ -52,6 +52,7 @@ def get_reviewer(user_id):
           }
      else:
           return None
+     
 
 def get_review(review_id):
     docRef = reviewRef.document(review_id)
@@ -62,6 +63,80 @@ def get_review(review_id):
         return data
     else:
          return None
+    
+def get_driver(user_id):
+     docRef = userRef.document(user_id)
+     doc = docRef.get()
+     if doc.exists:
+          data = doc.to_dict()
+          return {
+               "Name": f"{data['FirstName']} {data['LastName']}",
+               "ProfileUrl": data['ProfileUrl']
+          }
+     else:
+          return None
+     
+def get_corider(user_id):
+     docRef = userRef.document(user_id)
+     doc = docRef.get()
+     if doc.exists:
+          data = doc.to_dict()
+          return {
+               "Name": f"{data['FirstName']} {data['LastName']}",
+               "ProfileUrl": data['ProfileUrl']
+          }
+     else:
+          return None
+     
+def get_ride(ride_id):
+    docRef = rideRef.document(ride_id)
+    doc = docRef.get()
+    if doc.exists:
+        data = doc.to_dict()
+        data["Driver"] = get_driver(data["Driver"].get().id)
+
+        coRidersRef = docRef.collection("CoRiders")
+        co_riders = coRidersRef.get()
+        co_riders_data = []
+        for co_rider in co_riders:
+            co_rider_data = co_rider.to_dict()
+            if co_rider_data["CoRider"]:
+                 co_rider_data["CoRider"] = get_corider(co_rider_data["CoRider"].get().id)
+                 co_riders_data.append(co_rider_data)
+        data["CoRiders"] = co_riders_data
+        # co_riders_data = ""
+        # if co_riders:
+        #      co_riders_data = doc.to_dict()
+        #      for co_rider in co_riders_data:
+        #           if co_rider["CoRider"]:
+        #                co_rider["CoRider"] = "1"
+        # for co_rider in co_riders:
+        #      print(co_rider.id)
+
+        # data["CoRiders"] = co_riders_data
+        return data
+    else:
+         return None
+    
+def get_corider(corider_id):
+    # docRef = rideRef.document(history_id)
+    # doc = docRef.get()
+    # if doc.exists:
+    #     data = doc.to_dict()
+    #     data["Driver"] = get_driver(data["Driver"].get().id)
+    #     return data
+    # else:
+    #      return None
+     docRef = userRef.document(corider_id)
+     doc = docRef.get()
+     if doc.exists:
+          data = doc.to_dict()
+          return {
+               "Name": f"{data['FirstName']} {data['LastName']}",
+               "ProfileUrl": data['ProfileUrl']
+          }
+     else:
+          return None
 
 
 @app.route('/get_user', methods=['GET'])
@@ -74,7 +149,24 @@ def get_user():
             user_data["Reviews"] = [get_review(ref.get().id) for ref in user_data["Reviews"]]
         if user_data["Vehicles"]:
             user_data["Vehicles"] = [get_vehicle(ref.get().id) for ref in user_data["Vehicles"]]
+        del user_data["History"]
         return jsonify(user_data)
+    else:
+        print("No such document!")
+        return None
+    
+@app.route('/get_history', methods=['GET'])
+def get_history():
+    docRef = userRef.document(request.args.get('userId'))
+    doc = docRef.get()
+    if doc.exists:
+        user_data = doc.to_dict()
+        if user_data["History"]:
+            user_data["History"] = [get_ride(ref.get().id) for ref in user_data["History"]]
+        
+        history_data = user_data["History"]
+
+        return jsonify(history_data)
     else:
         print("No such document!")
         return None
