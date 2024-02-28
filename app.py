@@ -6,14 +6,20 @@ from datetime import datetime
 import polyline
 from firebase_admin import firestore, initialize_app, credentials
 from config import API_KEY
+from flask_cors import CORS, cross_origin
+from google.cloud.firestore_v1 import SERVER_TIMESTAMP
 
 # from apscheduler.schedulers.background import BackgroundScheduler
 gmaps = googlemaps.Client(key=API_KEY)
 
 app = Flask(__name__)
+CORS(app)
+
 cred = credentials.Certificate("firebase-admin.json")
 initialize_app(cred)
+
 db = firestore.client()
+
 userRef = db.collection("Users")
 vehicleRef = db.collection("Vehicles")
 reviewRef = db.collection("Reviews")
@@ -22,8 +28,8 @@ rideRef = db.collection("Rides")
 # scheduler = BackgroundScheduler()
 
 def printHello():
-	print("Hello")
-	
+    print("Hello")
+    
 # scheduler.add_job(printHello, 'interval', seconds=10)
 
 # scheduler.start()
@@ -36,23 +42,22 @@ def get_vehicle(vehicle_id):
     docRef = vehicleRef.document(vehicle_id)
     doc = docRef.get()
     if doc.exists:
-         vehicle = doc.to_dict()
-         return vehicle
+        vehicle = doc.to_dict()
+        return vehicle
     else:
-         return None
+        return None
     
 def get_reviewer(user_id):
-     docRef = userRef.document(user_id)
-     doc = docRef.get()
-     if doc.exists:
-          data = doc.to_dict()
-          return {
-               "Name": f"{data['FirstName']} {data['LastName']}",
-               "ProfileUrl": data['ProfileUrl']
-          }
-     else:
-          return None
-     
+    docRef = userRef.document(user_id)
+    doc = docRef.get()
+    if doc.exists:
+        data = doc.to_dict()
+        return {
+            "Name": f"{data['FirstName']} {data['LastName']}",
+            "ProfileUrl": data['ProfileUrl']
+        }
+    else:
+        return None 
 
 def get_review(review_id):
     docRef = reviewRef.document(review_id)
@@ -62,32 +67,32 @@ def get_review(review_id):
         data["Reviewer"] = get_reviewer(data["Reviewer"].get().id)
         return data
     else:
-         return None
+        return None
     
 def get_driver(user_id):
-     docRef = userRef.document(user_id)
-     doc = docRef.get()
-     if doc.exists:
-          data = doc.to_dict()
-          return {
-               "Name": f"{data['FirstName']} {data['LastName']}",
-               "ProfileUrl": data['ProfileUrl']
-          }
-     else:
-          return None
-     
+    docRef = userRef.document(user_id)
+    doc = docRef.get()
+    if doc.exists:
+        data = doc.to_dict()
+        return {
+            "Name": f"{data['FirstName']} {data['LastName']}",
+            "ProfileUrl": data['ProfileUrl']
+        }
+    else:
+        return None
+    
 def get_corider(user_id):
-     docRef = userRef.document(user_id)
-     doc = docRef.get()
-     if doc.exists:
-          data = doc.to_dict()
-          return {
-               "Name": f"{data['FirstName']} {data['LastName']}",
-               "ProfileUrl": data['ProfileUrl']
-          }
-     else:
-          return None
-     
+    docRef = userRef.document(user_id)
+    doc = docRef.get()
+    if doc.exists:
+        data = doc.to_dict()
+        return {
+            "Name": f"{data['FirstName']} {data['LastName']}",
+            "ProfileUrl": data['ProfileUrl']
+        }
+    else:
+        return None
+    
 def get_ride(ride_id):
     docRef = rideRef.document(ride_id)
     doc = docRef.get()
@@ -101,42 +106,24 @@ def get_ride(ride_id):
         for co_rider in co_riders:
             co_rider_data = co_rider.to_dict()
             if co_rider_data["CoRider"]:
-                 co_rider_data["CoRider"] = get_corider(co_rider_data["CoRider"].get().id)
-                 co_riders_data.append(co_rider_data)
+                co_rider_data["CoRider"] = get_corider(co_rider_data["CoRider"].get().id)
+                co_riders_data.append(co_rider_data)
         data["CoRiders"] = co_riders_data
-        # co_riders_data = ""
-        # if co_riders:
-        #      co_riders_data = doc.to_dict()
-        #      for co_rider in co_riders_data:
-        #           if co_rider["CoRider"]:
-        #                co_rider["CoRider"] = "1"
-        # for co_rider in co_riders:
-        #      print(co_rider.id)
-
-        # data["CoRiders"] = co_riders_data
         return data
     else:
-         return None
+        return None
     
 def get_corider(corider_id):
-    # docRef = rideRef.document(history_id)
-    # doc = docRef.get()
-    # if doc.exists:
-    #     data = doc.to_dict()
-    #     data["Driver"] = get_driver(data["Driver"].get().id)
-    #     return data
-    # else:
-    #      return None
-     docRef = userRef.document(corider_id)
-     doc = docRef.get()
-     if doc.exists:
-          data = doc.to_dict()
-          return {
-               "Name": f"{data['FirstName']} {data['LastName']}",
-               "ProfileUrl": data['ProfileUrl']
-          }
-     else:
-          return None
+    docRef = userRef.document(corider_id)
+    doc = docRef.get()
+    if doc.exists:
+        data = doc.to_dict()
+        return {
+            "Name": f"{data['FirstName']} {data['LastName']}",
+            "ProfileUrl": data['ProfileUrl']
+        }
+    else:
+        return None
 
 
 @app.route('/get_user', methods=['GET'])
@@ -229,7 +216,72 @@ def get_directions():
     except Exception as e:
         # Handle error
         return jsonify({'status': 'error', 'message': str(e)})
-    
+
+@app.route('/add_vehicle', methods=['POST'])
+def add_vehicle():
+    try:
+        data = request.json
+        userId = data.get('userId')
+
+        vehicle_data = {
+            "FuelType": data.get('fuelType'),
+            "SeatingCapcity": data.get('seatingCapacity'),
+            "VehicleName": data.get('vehicleName'),
+            "VehicleNumber": data.get('vehicleNumber')  
+        }
+
+        doc_ref = vehicleRef.document()
+        doc_ref.set(vehicle_data)
+        doc_id = doc_ref.id
+
+
+        user_doc = userRef.document(userId)
+        user_doc.update({"Vehicles": firestore.ArrayUnion([doc_ref])})
+
+        return jsonify({"message": "Vehicle added successfully", "document_id": doc_id, "data": vehicle_data}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/start_ride', methods=['GET'])
+def start_ride():
+    try:
+        # data = request.json
+
+        userId = request.args.get('userId')
+
+        # Source Latitude, Longitude & String
+        s_lat = int(request.args.get('s_lat'))
+        s_lng = int(request.args.get('s_lng'))
+        s_str = request.args.get('s_str')
+
+        # Destination Latitude, Longitude & String
+        d_lat = int(request.args.get('d_lat'))
+        d_lng = int(request.args.get('d_lng'))
+        d_str = request.args.get('d_str')
+
+        source = [s_lat, s_lng, s_str]
+        destination = [d_lat, d_lng, d_str]
+
+        driver_ref = userRef.document(userId)
+
+        ride_data = {
+            "Source": source,
+            "Destination": destination,
+            "Status": "Started",
+            "StartTime": SERVER_TIMESTAMP,
+            "Driver": driver_ref
+        }
+
+        doc_ref = rideRef.document()
+        doc_ref.set(ride_data)
+        doc_id = doc_ref.id
+
+        user_doc = userRef.document(userId)
+        user_doc.update({"History": firestore.ArrayUnion([doc_ref])})
+
+        return jsonify({"message": "Ride started successfully", "document_id": doc_id}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 if __name__ == "__main__":
-	app.run(debug=True)
+    app.run(debug=True)
 
