@@ -1,10 +1,12 @@
 # app.py
 import asyncio
+from math import atan2, cos, radians, sin, sqrt
 from flask import Flask, jsonify, request
 import googlemaps
 from datetime import datetime
 import polyline
 from firebase_admin import firestore, initialize_app, credentials
+import requests
 from config import API_KEY
 from flask_cors import CORS, cross_origin
 from google.cloud.firestore_v1 import SERVER_TIMESTAMP
@@ -124,6 +126,27 @@ def get_corider(corider_id):
         }
     else:
         return None
+    
+def calculate_distance(lat1, lon1, lat2, lon2):
+    # Radius of the Earth in kilometers
+    R = 6371.0
+
+    # Convert latitude and longitude from degrees to radians
+    lat1_rad = radians(lat1)
+    lon1_rad = radians(lon1)
+    lat2_rad = radians(lat2)
+    lon2_rad = radians(lon2)
+
+    # Difference in latitude and longitude
+    dlat = lat2_rad - lat1_rad
+    dlon = lon2_rad - lon1_rad
+
+    # Haversine formula
+    a = sin(dlat / 2)**2 + cos(lat1_rad) * cos(lat2_rad) * sin(dlon / 2)**2
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
+    distance = R * c
+
+    return distance
 
 
 @app.route('/get_user', methods=['GET'])
@@ -282,6 +305,35 @@ def start_ride():
         return jsonify({"message": "Ride started successfully", "document_id": doc_id}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route('/get_places', methods=['GET'])
+def get_places():
+    query = request.args.get('query')
+    src_lat = float(request.args.get('src_lat'))
+    src_lng = float(request.args.get('src_lng'))
+    url = f'https://maps.googleapis.com/maps/api/place/textsearch/json?query={query}&key={API_KEY}'
+
+
+    try:
+        response = requests.get(url)
+        response.raise_for_status()  # Raise an exception for HTTP errors
+        data = response.json()
+        places = data.get('results', [])
+
+        if not places:
+            return jsonify({'error': 'No places found.'}), 404
+
+        results = []
+        for place in places:
+            place_lat = place['geometry']['location']['lat']
+            place_lon = place['geometry']['location']['lng']
+            distance = calculate_distance(src_lat, src_lng, place_lat, place_lon)
+            place['distance'] = distance
+            results.append(place)
+
+        return jsonify({'places': results})
+    except requests.exceptions.RequestException as e:
+        return jsonify({'error': str(e)}), 500
 if __name__ == "__main__":
     app.run(debug=True)
 
