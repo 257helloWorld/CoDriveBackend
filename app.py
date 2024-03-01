@@ -265,47 +265,6 @@ def add_vehicle():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/start_ride', methods=['GET'])
-def start_ride():
-    try:
-        # data = request.json
-
-        userId = request.args.get('userId')
-
-        # Source Latitude, Longitude & String
-        s_lat = int(request.args.get('s_lat'))
-        s_lng = int(request.args.get('s_lng'))
-        s_str = request.args.get('s_str')
-
-        # Destination Latitude, Longitude & String
-        d_lat = int(request.args.get('d_lat'))
-        d_lng = int(request.args.get('d_lng'))
-        d_str = request.args.get('d_str')
-
-        source = [s_lat, s_lng, s_str]
-        destination = [d_lat, d_lng, d_str]
-
-        driver_ref = userRef.document(userId)
-
-        ride_data = {
-            "Source": source,
-            "Destination": destination,
-            "Status": "Started",
-            "StartTime": SERVER_TIMESTAMP,
-            "Driver": driver_ref
-        }
-
-        doc_ref = rideRef.document()
-        doc_ref.set(ride_data)
-        doc_id = doc_ref.id
-
-        user_doc = userRef.document(userId)
-        user_doc.update({"History": firestore.ArrayUnion([doc_ref])})
-
-        return jsonify({"message": "Ride started successfully", "document_id": doc_id}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
 @app.route('/get_places', methods=['GET'])
 def get_places():
     query = request.args.get('query')
@@ -334,6 +293,93 @@ def get_places():
         return jsonify({'places': results})
     except requests.exceptions.RequestException as e:
         return jsonify({'error': str(e)}), 500
+
+@app.route('/start_ride', methods=['GET'])
+def start_ride():
+    try:
+        # data = request.json
+
+        userId = request.args.get('userId')
+        vehicleId = request.args.get('vehicleId')
+        distance = request.args.get('totalDistance')
+
+        # Source Latitude, Longitude & String
+        s_lat = int(request.args.get('s_lat'))
+        s_lng = int(request.args.get('s_lng'))
+        s_str = request.args.get('s_str')
+
+        # Destination Latitude, Longitude & String
+        d_lat = int(request.args.get('d_lat'))
+        d_lng = int(request.args.get('d_lng'))
+        d_str = request.args.get('d_str')
+
+        source = [s_lat, s_lng, s_str]
+        destination = [d_lat, d_lng, d_str]
+
+        driver_ref = userRef.document(userId)
+
+        ride_data = {
+            "Source": source,
+            "Destination": destination,
+            "Status": "Started",
+            "StartTime": SERVER_TIMESTAMP,
+            "Driver": driver_ref,
+            # "TotalDistance": distance,
+            # "Vehicle": vehicleRef.document(vehicleId)
+        }
+
+        doc_ref = rideRef.document()
+        doc_ref.set(ride_data)
+        doc_id = doc_ref.id
+
+        user_doc = userRef.document(userId)
+        user_doc.update({"History": firestore.ArrayUnion([doc_ref])})
+
+        return jsonify({"message": "Ride started successfully", "document_id": doc_id}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/join_ride', methods=['GET'])
+def join_ride():
+    try:
+        userId = request.args.get('userId')
+        rideId = request.args.get('rideId')
+
+        # Pickup Latitude, Longitude & String
+        p_lat = int(request.args.get('p_lat'))
+        p_lng = int(request.args.get('p_lng'))
+        p_str = request.args.get('p_str')
+
+        # Drop Latitude, Longitude & String
+        d_lat = int(request.args.get('d_lat'))
+        d_lng = int(request.args.get('d_lng'))
+        d_str = request.args.get('d_str')
+
+        pickup = [p_lat, p_lng, p_str]
+        drop = [d_lat, d_lng, d_str]
+
+        corider_ref = userRef.document(userId)
+        doc_ref = rideRef.document(rideId).collection("CoRiders").document()
+        
+        ride_data = {
+            "Pickup": pickup,
+            "Drop": drop,
+            "PickupTime": SERVER_TIMESTAMP,
+            "DropTime": SERVER_TIMESTAMP,
+            "Distance": 1,
+            "CoRider": corider_ref,
+            "Amount": 30
+        }
+
+        doc_ref.set(ride_data)
+        doc_id = doc_ref.id
+
+        user_doc = userRef.document(userId)
+        user_doc.update({"History": firestore.ArrayUnion([doc_ref])})
+
+        return jsonify({"message": "Ride joined successfully", "document_id": doc_id}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 if __name__ == "__main__":
     app.run(debug=True)
 
