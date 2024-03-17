@@ -9,6 +9,7 @@ from firebase_admin import firestore, initialize_app, credentials
 import requests
 from config import API_KEY
 from flask_cors import CORS, cross_origin
+from geopy.distance import geodesic
 from google.cloud.firestore_v1 import SERVER_TIMESTAMP
 
 # from apscheduler.schedulers.background import BackgroundScheduler
@@ -45,6 +46,7 @@ def get_vehicle(vehicle_id):
     doc = docRef.get()
     if doc.exists:
         vehicle = doc.to_dict()
+        vehicle["Id"] = vehicle_id
         return vehicle
     else:
         return None
@@ -56,7 +58,8 @@ def get_reviewer(user_id):
         data = doc.to_dict()
         return {
             "Name": f"{data['FirstName']} {data['LastName']}",
-            "ProfileUrl": data['ProfileUrl']
+            "ProfileUrl": data['ProfileUrl'],
+            "Id": user_id
         }
     else:
         return None 
@@ -66,6 +69,7 @@ def get_review(review_id):
     doc = docRef.get()
     if doc.exists:
         data = doc.to_dict()
+        data["Id"] = review_id
         data["Reviewer"] = get_reviewer(data["Reviewer"].get().id)
         return data
     else:
@@ -78,7 +82,8 @@ def get_driver(user_id):
         data = doc.to_dict()
         return {
             "Name": f"{data['FirstName']} {data['LastName']}",
-            "ProfileUrl": data['ProfileUrl']
+            "ProfileUrl": data['ProfileUrl'],
+            "Id": user_id
         }
     else:
         return None
@@ -90,7 +95,8 @@ def get_corider(user_id):
         data = doc.to_dict()
         return {
             "Name": f"{data['FirstName']} {data['LastName']}",
-            "ProfileUrl": data['ProfileUrl']
+            "ProfileUrl": data['ProfileUrl'],
+            "Id": user_id
         }
     else:
         return None
@@ -100,6 +106,7 @@ def get_ride(ride_id):
     doc = docRef.get()
     if doc.exists:
         data = doc.to_dict()
+        data["Id"] = ride_id
         data["Driver"] = get_driver(data["Driver"].get().id)
 
         coRidersRef = docRef.collection("CoRiders")
@@ -122,7 +129,8 @@ def get_corider(corider_id):
         data = doc.to_dict()
         return {
             "Name": f"{data['FirstName']} {data['LastName']}",
-            "ProfileUrl": data['ProfileUrl']
+            "ProfileUrl": data['ProfileUrl'],
+            "Id": corider_id
         }
     else:
         return None
@@ -155,6 +163,7 @@ def get_user():
     doc = docRef.get()
     if doc.exists:
         user_data = doc.to_dict()
+        user_data["Id"] = doc.id
         if user_data["Reviews"]:
             user_data["Reviews"] = [get_review(ref.get().id) for ref in user_data["Reviews"]]
         if user_data["Vehicles"]:
@@ -188,10 +197,12 @@ def get_directions():
         source_lat = float(request.args.get('s1'))
         source_lng = float(request.args.get('s2'))
         destination_lat = float(request.args.get('d1'))
-        destination_lng = float(request.args.get('d2 '))
+        destination_lng = float(request.args.get('d2'))
 
         source_str = f"{source_lat},{source_lng}"
         destination_str = f"{destination_lat},{destination_lng}"
+
+        print("Hello", source_str, destination_str)
 
         # Request directions from Google Maps API
         directions_result = gmaps.directions(
@@ -304,14 +315,21 @@ def start_ride():
         distance = request.args.get('totalDistance')
 
         # Source Latitude, Longitude & String
-        s_lat = int(request.args.get('s_lat'))
-        s_lng = int(request.args.get('s_lng'))
+        s_lat = float(request.args.get('s_lat'))
+        s_lng = float(request.args.get('s_lng'))
         s_str = request.args.get('s_str')
 
         # Destination Latitude, Longitude & String
-        d_lat = int(request.args.get('d_lat'))
-        d_lng = int(request.args.get('d_lng'))
+        d_lat = float(request.args.get('d_lat'))
+        d_lng = float(request.args.get('d_lng'))
         d_str = request.args.get('d_str')
+
+        isNow = request.args.get('isNow')
+        startTime = 0
+        if(isNow):
+            startTime = SERVER_TIMESTAMP
+        else:
+            startTime = request.args.get('startTime')
 
         source = [s_lat, s_lng, s_str]
         destination = [d_lat, d_lng, d_str]
@@ -322,10 +340,10 @@ def start_ride():
             "Source": source,
             "Destination": destination,
             "Status": "Started",
-            "StartTime": SERVER_TIMESTAMP,
+            "StartTime": startTime,
             "Driver": driver_ref,
             # "TotalDistance": distance,
-            # "Vehicle": vehicleRef.document(vehicleId)
+            "Vehicle": vehicleRef.document(vehicleId)
         }
 
         doc_ref = rideRef.document()
@@ -380,6 +398,93 @@ def join_ride():
         return jsonify({"message": "Ride joined successfully", "document_id": doc_id}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+def fetch_route_coordinates(source_lat, source_lng, destination_lat, destination_lng):
+    source_str = f"{source_lat},{source_lng}"
+    destination_str = f"{destination_lat},{destination_lng}"
+    directions_result = gmaps.directions(
+        source_str,
+        destination_str,
+        mode="driving",  # You can change the mode based on your requirements
+        departure_time=datetime.now(),
+    )
+
+    # Extract relevant information from the directions result
+    if len(directions_result) > 0:
+        route = directions_result[0]['legs'][0]
+        steps = route['steps']
+        encoded_polyline = directions_result[0]['overview_polyline']['points']
+        decoded_polyline = polyline.decode(encoded_polyline)
+        if len(decoded_polyline) > 0:
+            # Insert source coordinates at the beginning
+            decoded_polyline.insert(0, (source_lat, source_lng))
+            # Append destination coordinates at the end
+            decoded_polyline.append((destination_lat, destination_lng))
+            return decoded_polyline 
+        else:
+            return []
+    else:
+        return []
+    
+
+@app.route('/search_rides', methods=['GET'])
+def search_rides():
+    # Get user's source and destination coordinates from the request
+    user_source_lat = float(request.args.get('s_lat'))
+    user_source_lng = float(request.args.get('s_lng'))
+    user_destination_lat = float(request.args.get('d_lat'))
+    user_destination_lng = float(request.args.get('d_lng'))
+
+
+    # Fetch all ride documents with status "Started" from Firestore
+    query = rideRef.where("Status", "==", "Started")
+    rides = query.stream()
+
+    # Fetch route coordinates for the user's source and destination from Google Maps Directions API
+    user_route_coordinates = fetch_route_coordinates(user_source_lat, user_source_lng, user_destination_lat, user_destination_lng)
+
+    filtered_rides = []
+    count = 0
+
+    # Iterate over all rides and filter based on proximity to the user's source and destination coordinates
+    results = []
+    for ride in rides:
+        count = count + 1
+        ride_data = ride.to_dict()
+        ride_data["Id"] = ride.id
+
+        document_route_coordinates = fetch_route_coordinates(ride_data["Source"][0], ride_data["Source"][1], ride_data["Destination"][0], ride_data["Destination"][1])
+        # return jsonify({"Coords": document_route_coordinates, "Data": [ride_data["Source"], ride_data["Destination"]]})
+
+        source_proximity = False
+        for lat, lng in document_route_coordinates:
+            distance = geodesic((user_source_lat, user_source_lng), (lat, lng)).meters
+            if distance <= 1000:
+                source_proximity = True
+                break
+
+        destination_proximity = False
+        for lat, lng in document_route_coordinates:
+            distance = geodesic((user_destination_lat, user_destination_lng), (lat, lng)).meters
+            if distance <= 1000:
+                destination_proximity = True
+                break
+        # destination_proximity = any(geodesic((user_destination_lat, user_destination_lng), (lat, lng)).meters <= 500 for lat, lng in document_route_coordinates)
+
+    if source_proximity and destination_proximity:
+        filtered_rides.append(ride_data)
+    
+    if(filtered_rides):
+        for ride in filtered_rides:
+            results.append({
+                "Source": ride["Source"], 
+                "Destination": ride["Destination"], 
+                "Status": ride["Status"],
+                "Id": ride["Id"]
+            })
+
+    return jsonify({'rides': results})
+
 if __name__ == "__main__":
     app.run(debug=True)
 
