@@ -1,0 +1,142 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+      "title": "CoDrive",
+      "description": "API for Car-Pooling app.",
+      "version": "1.0"
+    },
+    "basePath": "/api",
+    "schemes": [
+      "http"
+    ],
+    "consumes": [
+      "application/json"
+    ],
+    "produces": [
+      "application/json"
+    ],
+    "paths": {
+      "/get_user": {
+        "get": {
+          "summary": "Get User Details",
+          "produces": [
+            "application/json"
+          ],
+          "parameters": [
+            {
+              "name": "userId",
+              "in": "query",
+              "required": true,
+              "schema": {
+                "type": "string"
+              },
+              "description": "ID of the user to retrieve"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "User data fetch successful",
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      },
+      "/get_history": {
+        "get": {
+          "summary": "Get User History",
+          "description": "Retrieve user history based on userId.",
+          "parameters": [
+            {
+              "name": "userId",
+              "in": "query",
+              "required": true,
+              "schema": {
+                "type": "string"
+              },
+              "description": "ID of the user to retrieve history for"
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "User data fetch successful",
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      },
+      "/add_vehicle": {
+        "post": {
+            "summary": "Add Vehicle",
+            "description": "Add vehicle to a user profile.",
+            "requestBody": {
+                "required": true,
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "userId": {"type": "string"},
+                                "fuelType": {"type": "string"},
+                                "seatingCapacity": {"type": "integer"},
+                                "vehicleName": {"type": "string"},
+                                "vehicleNumber": {"type": "string"}
+                            },
+                            "required": ["userId", "fuelType", "seatingCapacity", "vehicleName", "vehicleNumber"]
+                        }
+                    }
+                }
+            },
+            "responses": {
+                "200": {
+                    "description": "Vehicle added successfully",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "500": {
+                    "description": "Internal Server Error",
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "error": {"type": "string"}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },    
+      "/hello": {
+        "get": {
+          "summary": "Returns a simple greeting message.",
+          "produces": [
+            "application/json"
+          ],
+          "responses": {
+            "200": {
+              "description": "Successful response.",
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }

@@ -2,6 +2,8 @@
 import asyncio
 from math import atan2, cos, radians, sin, sqrt
 from flask import Flask, jsonify, request
+from flask_restful import Resource, Api
+from flask_swagger_ui import get_swaggerui_blueprint
 import googlemaps
 from datetime import datetime
 import polyline
@@ -17,6 +19,19 @@ gmaps = googlemaps.Client(key=API_KEY)
 
 app = Flask(__name__)
 CORS(app)
+api = Api(app)
+
+# Configure Swagger UI
+SWAGGER_URL = '/swagger'
+API_URL = "/static/swagger.json"
+swaggerui_blueprint = get_swaggerui_blueprint(
+    SWAGGER_URL,
+    API_URL,
+    config={
+        'app_name': "CoDrive"
+    }
+)
+app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
 
 cred = credentials.Certificate("firebase-admin.json")
 initialize_app(cred)
@@ -37,9 +52,11 @@ def printHello():
 
 # scheduler.start()
 
-@app.route('/')
+@app.route('/hello')
 def hello():
-    return {"members":["member1","member2","member3"]}
+    return {"members":["member1","member2","member5"]}
+
+# api.add_resource(hello, '/hello')
 
 def get_vehicle(vehicle_id):
     docRef = vehicleRef.document(vehicle_id)
@@ -107,7 +124,10 @@ def get_ride(ride_id):
     if doc.exists:
         data = doc.to_dict()
         data["Id"] = ride_id
-        data["Driver"] = get_driver(data["Driver"].get().id)
+        if "Driver" in data:
+            data["Driver"] = get_driver(data["Driver"].get().id)
+        if "Vehicle" in data:
+            data["Vehicle"] = get_vehicle(data["Vehicle"].get().id)
 
         coRidersRef = docRef.collection("CoRiders")
         co_riders = coRidersRef.get()
@@ -164,9 +184,9 @@ def get_user():
     if doc.exists:
         user_data = doc.to_dict()
         user_data["Id"] = doc.id
-        if user_data["Reviews"]:
+        if "Reviews" in user_data:
             user_data["Reviews"] = [get_review(ref.get().id) for ref in user_data["Reviews"]]
-        if user_data["Vehicles"]:
+        if "Vehicles" in user_data:
             user_data["Vehicles"] = [get_vehicle(ref.get().id) for ref in user_data["Vehicles"]]
         del user_data["History"]
         return jsonify(user_data)
@@ -180,7 +200,7 @@ def get_history():
     doc = docRef.get()
     if doc.exists:
         user_data = doc.to_dict()
-        if user_data["History"]:
+        if "History" in user_data:
             user_data["History"] = [get_ride(ref.get().id) for ref in user_data["History"]]
         
         history_data = user_data["History"]
