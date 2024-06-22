@@ -1,4 +1,4 @@
-# CoDrive - Car Pooling App (Back-end)🚗
+# 🚗 CoDrive - Car Pooling App (Back-end)
 This Flask application serves as the back-end for [CoDrive](https://github.com/257helloWorld/codrive), a car pooling service aimed at making commuting more efficient, economical, and eco-friendly.
 
 ## About CoDrive
